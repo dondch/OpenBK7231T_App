@@ -55,6 +55,11 @@ APPS_BUILD_CMD ?= build.sh
 all: OpenBK7231T
 
 # Full target will clean then build all
+# Every OpenBK* target below copies the vendor QIO and UA images out of the SDK, so
+# the SDK has to build them. A bare "sh build.sh" in the SDK leaves them off, because
+# on a board whose bootloader cannot be rewritten a QIO image is a way to destroy it.
+export VENDOR_PACKAGE = 1
+
 .PHONY: full
 full: clean all
 
@@ -726,12 +731,12 @@ ifeq ($(OBK_VARIANT), 8)
 	cd sdk/beken_freertos_sdk && \
 	cp -f beken378/app/config/sys_config_bk7238.h beken378/app/config/sys_config_bk7238.h.bak && \
 	sed -i 's/#if 0\/\/BTPROXY/#if 1/' beken378/app/config/sys_config_bk7238.h && \
-	ARM_GCC_TOOLCHAIN=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7238 $(APP_VERSION); \
+	FREERTOS_EXEC_PATH=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7238 $(APP_VERSION); \
 	rc=$$?; \
 	mv -f beken378/app/config/sys_config_bk7238.h.bak beken378/app/config/sys_config_bk7238.h; \
 	exit $$rc
 else
-	cd sdk/beken_freertos_sdk && ARM_GCC_TOOLCHAIN=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7238 $(APP_VERSION)
+	cd sdk/beken_freertos_sdk && FREERTOS_EXEC_PATH=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7238 $(APP_VERSION)
 endif
 	mkdir -p output/$(APP_VERSION)
 	cp sdk/beken_freertos_sdk/out/bk7238.bin output/$(APP_VERSION)/OpenBK7238_${APP_VERSION}.bin
@@ -741,7 +746,7 @@ endif
 
 .PHONY: OpenBK7231U
 OpenBK7231U: prebuild_OpenBK7231U
-	cd sdk/beken_freertos_sdk && ARM_GCC_TOOLCHAIN=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7231u $(APP_VERSION)
+	cd sdk/beken_freertos_sdk && FREERTOS_EXEC_PATH=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7231u $(APP_VERSION)
 	mkdir -p output/$(APP_VERSION)
 	cp sdk/beken_freertos_sdk/out/bk7231u_QIO.bin output/$(APP_VERSION)/OpenBK7231U_QIO_${APP_VERSION}.bin
 	cp sdk/beken_freertos_sdk/out/bk7231u.bin output/$(APP_VERSION)/OpenBK7231U_${APP_VERSION}.bin
@@ -762,7 +767,7 @@ OpenBK7252: prebuild_OpenBK7252
 			./tools/crc_binary/encrypt_n "$$patched" 510fb093 a3cbeadc 5993a17e c7adeb03 0 && \
 			mv -f "$$patched_enc" "$$boot" && \
 			./tools/rt_partition_tool/rt_partition_tool_cli-x64 "$$boot" ../../platforms/BK723x/bk7252_partition_2M.json && \
-			ARM_GCC_TOOLCHAIN=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7251 $(APP_VERSION) || status=$$?; \
+			FREERTOS_EXEC_PATH=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7251 $(APP_VERSION) || status=$$?; \
 		rm -f "$$patched" "$$patched_enc"; \
 		mv -f "$$bak" "$$boot"; \
 		exit $$status; \
@@ -777,7 +782,7 @@ OpenBK7252: prebuild_OpenBK7252
 
 .PHONY: OpenBK7252N
 OpenBK7252N: prebuild_OpenBK7252N
-	cd sdk/beken_freertos_sdk && ARM_GCC_TOOLCHAIN=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7252n $(APP_VERSION)
+	cd sdk/beken_freertos_sdk && FREERTOS_EXEC_PATH=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7252n $(APP_VERSION)
 	mkdir -p output/$(APP_VERSION)
 	cp sdk/beken_freertos_sdk/out/bk7252n.bin output/$(APP_VERSION)/OpenBK7252N_${APP_VERSION}.bin
 	cp sdk/beken_freertos_sdk/out/bk7252n_QIO.bin output/$(APP_VERSION)/OpenBK7252N_QIO_${APP_VERSION}.bin
@@ -792,12 +797,12 @@ ifeq ($(OBK_VARIANT), 8)
 	cd sdk/beken_freertos_sdk && \
 	cp -f beken378/app/config/sys_config_bk7231n.h beken378/app/config/sys_config_bk7231n.h.bak && \
 	sed -i 's/#if 0\/\/BTPROXY/#if 1/' beken378/app/config/sys_config_bk7231n.h && \
-	ARM_GCC_TOOLCHAIN=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7231n $(APP_VERSION)_ALT; \
+	FREERTOS_EXEC_PATH=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7231n $(APP_VERSION)_ALT; \
 	rc=$$?; \
 	mv -f beken378/app/config/sys_config_bk7231n.h.bak beken378/app/config/sys_config_bk7231n.h; \
 	exit $$rc
 else
-	cd sdk/beken_freertos_sdk && ARM_GCC_TOOLCHAIN=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7231n $(APP_VERSION)_ALT
+	cd sdk/beken_freertos_sdk && FREERTOS_EXEC_PATH=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7231n $(APP_VERSION)_ALT
 endif
 	mkdir -p output/$(APP_VERSION)
 	cp sdk/beken_freertos_sdk/out/bk7231n_QIO.bin output/$(APP_VERSION)/OpenBK7231N_ALT_QIO_${APP_VERSION}.bin
@@ -808,7 +813,7 @@ endif
 
 .PHONY: OpenBK7231T_ALT
 OpenBK7231T_ALT: prebuild_OpenBK7231T_ALT
-	cd sdk/beken_freertos_sdk && ARM_GCC_TOOLCHAIN=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7231 $(APP_VERSION)_ALT
+	cd sdk/beken_freertos_sdk && FREERTOS_EXEC_PATH=$(PWD)/sdk/beken_freertos_sdk/toolchain/arm-none-eabi/bin/ OBK_VARIANT=$(OBK_VARIANT) sh build.sh bk7231 $(APP_VERSION)_ALT
 	mkdir -p output/$(APP_VERSION)
 	cp sdk/beken_freertos_sdk/out/bk7231t_QIO.bin output/$(APP_VERSION)/OpenBK7231T_ALT_QIO_${APP_VERSION}.bin
 	cp sdk/beken_freertos_sdk/out/bk7231u.bin output/$(APP_VERSION)/OpenBK7231T_ALT_${APP_VERSION}.bin
