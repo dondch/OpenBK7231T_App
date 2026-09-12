@@ -204,7 +204,11 @@ static int http_rest_post(http_request_t* request) {
 #endif
 		int r = 0;
 #if PLATFORM_BEKEN
+#ifdef END_ADR_OF_BK_PARTITION_OTA
+		r = http_rest_post_flash(request, START_ADR_OF_BK_PARTITION_OTA, END_ADR_OF_BK_PARTITION_OTA);
+#else
 		r = http_rest_post_flash(request, START_ADR_OF_BK_PARTITION_OTA, LFS_BLOCKS_END);
+#endif
 #elif PLATFORM_W600
 		r = http_rest_post_flash(request, -1, -1);
 #elif PLATFORM_W800
@@ -1344,8 +1348,12 @@ static int http_rest_post_flash_advanced(http_request_t* request) {
 	int sres;
 	sres = sscanf(params, "%x", &startaddr);
 	if (sres == 1 && startaddr >= START_ADR_OF_BK_PARTITION_OTA) {
+#ifdef END_ADR_OF_BK_PARTITION_OTA
+		return http_rest_post_flash(request, startaddr, END_ADR_OF_BK_PARTITION_OTA);
+#else
 		// allow up to end of flash
 		return http_rest_post_flash(request, startaddr, 0x200000);
+#endif
 	}
 	return http_rest_error(request, -1, "invalid url");
 }

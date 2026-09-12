@@ -322,6 +322,13 @@
 #if PLATFORM_BK7252 || PLATFORM_BK7252N
 #define ENABLE_DRIVER_BKCAMERA					1
 #endif
+#if PLATFORM_BK7252
+// our_lfs.h has no branch for this platform, so LFS_BLOCKS_START falls back to
+// 0x12B000, which on the BK-W8 4 MB layout sits inside the running application.
+// A format would overwrite the firmware. Nothing here needs a filesystem, and the
+// write-protected lower half leaves no free region to move it to, so leave it out.
+#undef ENABLE_LITTLEFS
+#endif
 #if PLATFORM_BK7231N || PLATFORM_BEKEN_NEW
 // #define ENABLE_DRIVER_PWM_GROUP				1
 #define ENABLE_DRIVER_SM16703P					1
