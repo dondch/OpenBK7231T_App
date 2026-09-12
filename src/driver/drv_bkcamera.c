@@ -96,6 +96,7 @@ static int Cam_ServeClient(int client, unsigned char *buf) {
 
 static void Cam_ServerThread(void *arg) {
 	struct sockaddr_in addr;
+	struct timeval tv;
 	socklen_t slen = sizeof(addr);
 	unsigned char *buf;
 	int srv = -1;
@@ -140,6 +141,14 @@ static void Cam_ServerThread(void *arg) {
 		goto done;
 	}
 
+	// accept() must not park for ever. With a receive timeout it gives up once
+	// a second, so the loop below sees a stop request even when nobody ever
+	// connects. Without this, CAM_Stop appears to do nothing and then takes
+	// effect on the next viewer, who gets served one time and disconnected.
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	setsockopt(srv, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
 	g_camRunning = 1;
 	snprintf(g_camStatus, sizeof(g_camStatus), "listening on %i", g_camPort);
 	ADDLOG_INFO(LOG_FEATURE_DRV, "BKCamera: MJPEG stream on port %i", g_camPort);
@@ -162,8 +171,31 @@ done:
 	video_buffer_close();
 	g_camRunning = 0;
 	g_camThread = NULL;
-	strcat(g_camStatus, " (thread exited)");
+	if (g_camStop) {
+		snprintf(g_camStatus, sizeof(g_camStatus), "stopped");
+	}
+	else {
+		// the thread gave up on its own, so the reason set above is the part
+		// worth keeping. strcat here would overrun g_camStatus after a few
+		// stop/start cycles.
+		int used = strlen(g_camStatus);
+		snprintf(g_camStatus + used, sizeof(g_camStatus) - used, " (thread exited)");
+	}
 	rtos_delete_thread(NULL);
+}
+
+// Stopping only raises a flag: the thread can be inside accept() or part way
+// through a frame. Wait for it to leave, otherwise the "already running" test
+// in CMD_CamStart refuses a restart and the stream stays dead until a reboot.
+static int Cam_StopAndWait(void) {
+	int waited = 0;
+
+	g_camStop = 1;
+	while ((g_camRunning || g_camThread != NULL) && waited < 4000) {
+		rtos_delay_milliseconds(50);
+		waited += 50;
+	}
+	return (g_camRunning || g_camThread != NULL) ? -1 : 0;
 }
 
 static commandResult_t CMD_CamStart(const void *context, const char *cmd, const char *args, int cmdFlags) {
@@ -187,8 +219,12 @@ static commandResult_t CMD_CamStart(const void *context, const char *cmd, const 
 }
 
 static commandResult_t CMD_CamStop(const void *context, const char *cmd, const char *args, int cmdFlags) {
-	g_camStop = 1;
 	ADDLOG_INFO(LOG_FEATURE_DRV, "BKCamera: stopping");
+	if (Cam_StopAndWait() != 0) {
+		ADDLOG_ERROR(LOG_FEATURE_DRV, "BKCamera: the server thread did not stop");
+		return CMD_RES_ERROR;
+	}
+	ADDLOG_INFO(LOG_FEATURE_DRV, "BKCamera: stopped");
 	return CMD_RES_OK;
 }
 
@@ -206,7 +242,7 @@ void BKCamera_Init(void) {
 }
 
 void BKCamera_Stop(void) {
-	g_camStop = 1;
+	Cam_StopAndWait();
 }
 
 void BKCamera_AppendInformationToHTTPIndexPage(http_request_t *request) {
