@@ -292,6 +292,11 @@ void DRV_DDPSend_RunFrame();
 void DRV_DDPSend_AppendInformationToHTTPIndexPage(http_request_t* request, int bPreState);
 
 void TXW_Cam_Init(void);
+#if ENABLE_DRIVER_BKCAMERA
+void BKCamera_Init(void);
+void BKCamera_Stop(void);
+void BKCamera_AppendInformationToHTTPIndexPage(http_request_t *request);
+#endif
 void TXW_Cam_RunEverySecond(void);
 
 #define SM2135_DELAY 4

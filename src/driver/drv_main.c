@@ -1524,6 +1524,22 @@ static driver_t g_drivers[] = {
 	false,
 	},
 #endif
+#if ENABLE_DRIVER_BKCAMERA
+	//drvdetail:{"name":"BKCAMERA",
+	//drvdetail:"title":"BK7252 camera MJPEG stream",
+	//drvdetail:"descr":"Brings up the GC0328 camera pipeline and serves an MJPEG stream on its own port, 8080 by default. Start it with CAM_Start and stop it with CAM_Stop.",
+	//drvdetail:"requires":""}
+	{ "BKCAMERA",                            // Driver Name
+	BKCamera_Init,                           // Init
+	NULL,                                    // onEverySecond
+	BKCamera_AppendInformationToHTTPIndexPage, // appendInformationToHTTPIndexPage
+	NULL,                                    // runQuickTick
+	BKCamera_Stop,                           // stopFunction
+	NULL,                                    // onChannelChanged
+	NULL,                                    // onHassDiscovery
+	false,                                   // loaded
+	},
+#endif
 #if PLATFORM_TXW81X
 	//drvdetail:{"name":"TXWCAM",
 	//drvdetail:"title":"TODO",
