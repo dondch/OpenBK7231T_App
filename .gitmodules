@@ -43,8 +43,8 @@
 	branch = master
 [submodule "sdk/beken_freertos_sdk"]
 	path = sdk/beken_freertos_sdk
-	url = https://github.com/NonPIayerCharacter/beken_freertos_sdk.git
-	branch = master
+	url = https://github.com/dondch/beken_freertos_sdk.git
+	branch = bk-w8-on-camera
 [submodule "sdk/OpenRTL8720D"]
 	path = sdk/OpenRTL8720D
 	url = https://github.com/NonPIayerCharacter/OpenRTL8720D.git
