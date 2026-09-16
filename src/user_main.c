@@ -978,6 +978,9 @@ void Main_OnEverySecond()
 		{
 			ADDLOGF_INFO("Boot complete time reached (%i seconds)", bootCompleteSeconds);
 			HAL_FlashVars_SaveBootComplete();
+#if PLATFORM_BK7252
+			HAL_ABSlot_MarkBootOK();
+#endif
 			//g_bootFailures = HAL_FlashVars_GetBootFailures();
 			g_bBootMarkedOK = true;
 		}

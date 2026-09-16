@@ -29,6 +29,7 @@ endif
 SRC_C += ./fixes/blank.c
 APP_C += $(OBK_DIR)/../platforms/BK723x/ps.c
 
+APP_C += $(OBK_DIR)/hal/bk7231/hal_abslot_bk7252.c
 APP_C += $(OBK_DIR)/hal/bk7231/hal_adc_bk7231.c
 APP_C += $(OBK_DIR)/hal/bk7231/hal_flashConfig_bk7231.c
 APP_C += $(OBK_DIR)/hal/bk7231/hal_flashVars_bk7231.c

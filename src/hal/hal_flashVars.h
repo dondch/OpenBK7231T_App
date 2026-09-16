@@ -56,6 +56,11 @@ typedef struct flash_vars_structure
 void HAL_FlashVars_IncreaseBootCount();
 // call once started (>30s?)
 void HAL_FlashVars_SaveBootComplete();
+#if PLATFORM_BK7252
+// BK-W8 A/B slot: clear the vendor boot counter, see hal_abslot_bk7252.c
+void HAL_ABSlot_MarkBootOK();
+const char *HAL_ABSlot_Status();
+#endif
 // call to return the number of boots since a HAL_FlashVars_SaveBootComplete
 int HAL_FlashVars_GetBootFailures();
 int HAL_FlashVars_GetBootCount();

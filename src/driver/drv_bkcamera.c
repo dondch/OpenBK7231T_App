@@ -19,6 +19,7 @@
 #include "../cmnds/cmd_public.h"
 #include "../cmnds/cmd_local.h"
 #include "../logging/logging.h"
+#include "../hal/hal_flashVars.h"
 
 #if ENABLE_DRIVER_BKCAMERA
 
@@ -247,6 +248,9 @@ void BKCamera_Stop(void) {
 
 void BKCamera_AppendInformationToHTTPIndexPage(http_request_t *request) {
 	hprintf255(request, "<h5>Camera: %s, %i frames sent</h5>", g_camStatus, g_camFrames);
+#if PLATFORM_BK7252
+	hprintf255(request, "<h5>ABSlot: %s</h5>", HAL_ABSlot_Status());
+#endif
 }
 
 #endif // ENABLE_DRIVER_BKCAMERA
