@@ -44,6 +44,9 @@ uint8_t g_log2lfs;
 #include "driver/drv_mdns.h"
 #include "driver/drv_ssdp.h"
 #include "driver/drv_uart.h"
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+#include "driver/drv_xiaomi_compact4.h"
+#endif
 
 #if PLATFORM_BEKEN
 #include <mcu_ps.h>
@@ -123,6 +126,8 @@ void Main_ForceUnsafeInit();
 #elif PLATFORM_BL602 || PLATFORM_REALTEK || PLATFORM_XRADIO || PLATFORM_W600 || PLATFORM_RDA5981 || PLATFORM_LN8825 \
 	|| PLATFORM_LN882H || PLATFORM_BL_NEW || PLATFORM_GD32VW553 || PLATFORM_ARMINO
 #define WFI_FUNC() __asm volatile("wfi")
+#elif PLATFORM_TR6260 || PLATFORM_ECR6600
+#define WFI_FUNC() __asm volatile("standby no_wake_grant")
 #elif PLATFORM_W800
 #define WFI_FUNC __WFI
 #endif
@@ -1101,7 +1106,13 @@ void Main_OnEverySecond()
 		}
 	}
 #endif
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+	if (bSafeMode || XiaomiCompact4_ShouldFeedWDT()) {
+		HAL_Run_WDT();
+	}
+#else
 	HAL_Run_WDT();
+#endif
 	// force it to sleep...  we MUST have some idle task processing
 	// else task memory doesn't get freed
 	rtos_delay_milliseconds(1);
@@ -1210,7 +1221,11 @@ void QuickTick(void* param)
 
 }
 
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+#define QT_STACK_SIZE 4096
+#else
 #define QT_STACK_SIZE 2048
+#endif
 
 ////////////////////////////////////////////////////////
 // this is the bit which runs the quick tick timer
@@ -1218,7 +1233,7 @@ void QuickTick(void* param)
 
 #elif PLATFORM_BL602 || PLATFORM_W600 || PLATFORM_W800 || PLATFORM_TR6260 || defined(PLATFORM_REALTEK) || PLATFORM_ECR6600 \
 	|| PLATFORM_ESP8266 || PLATFORM_ESPIDF || PLATFORM_XRADIO || PLATFORM_LN882H || PLATFORM_TXW81X || PLATFORM_RDA5981 || PLATFORM_LN8825 \
-	|| PLATFORM_BL_NEW || PLATFORM_GD32VW553
+	|| PLATFORM_BL_NEW || PLATFORM_GD32VW553 || PLATFORM_RTL8196C
 void quick_timer_thread(void* param)
 {
 	while (1) {
@@ -1234,7 +1249,7 @@ void QuickTick_StartThread(void)
 #if WINDOWS
 
 #elif PLATFORM_BL602 || PLATFORM_W600 || PLATFORM_W800 || PLATFORM_TR6260 || defined(PLATFORM_REALTEK) || PLATFORM_ECR6600 \
-	|| PLATFORM_ESP8266 || PLATFORM_ESPIDF || PLATFORM_XRADIO || PLATFORM_LN882H || PLATFORM_LN8825 || PLATFORM_BL_NEW || PLATFORM_GD32VW553
+	|| PLATFORM_ESP8266 || PLATFORM_ESPIDF || PLATFORM_XRADIO || PLATFORM_LN882H || PLATFORM_LN8825 || PLATFORM_BL_NEW || PLATFORM_GD32VW553 || PLATFORM_RTL8196C
 	xTaskCreate(quick_timer_thread, "quick", QT_STACK_SIZE, NULL, 15, NULL);
 #elif PLATFORM_TXW81X
 	os_task_create("quick", quick_timer_thread, NULL, 15, 0, NULL, QT_STACK_SIZE);
@@ -1519,6 +1534,11 @@ void Main_Init_Before_Delay()
 	}
 	CFG_InitAndLoad();
 
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+	// Keep motor hardware inert before normal driver startup and throughout safe mode.
+	XiaomiCompact4_PreDriverSafetyInit(bSafeMode);
+#endif
+
 #if ENABLE_LITTLEFS
 	LFSAddCmds();
 #endif
@@ -1582,7 +1602,12 @@ void Main_Init_After_Delay()
 		bForceOpenAP = 1;
 #endif
 
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+	// Keep the appliance watchdog local without changing other ESP-IDF variants.
+	XiaomiCompact4_ConfigureWDT();
+#else
 	HAL_Configure_WDT();
+#endif
 
 	if ((*wifi_ssid == 0))
 	{
@@ -1609,7 +1634,8 @@ void Main_Init_After_Delay()
 	}
 
 	ADDLOGF_INFO("Using SSID [%s]", wifi_ssid);
-	ADDLOGF_INFO("Using Pass [%s]", wifi_pass);
+	// do not log sensitive data (same as mqtt_pass) - this line ends up in /logs, the tcp log port and pasted bug reports
+	ADDLOGF_INFO("Using Pass [%s]", *wifi_pass ? "********" : "");
 
 	// NOT WORKING, I done it other way, see ethernetif.c
 	//net_dhcp_hostname_set(g_shortDeviceName);

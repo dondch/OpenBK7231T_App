@@ -478,6 +478,15 @@ int http_fn_index(http_request_t* request) {
 	for (i = 0; i < CHANNEL_MAX; i++) {
 		const char **types;
 		int numTypes;
+		const char *channelPrefix = "Channel ";
+		const char *enumSuffix = " Enum";
+
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+		if (XiaomiCompact4_ShouldUseCompactIndexLabels(i)) {
+			channelPrefix = "";
+			enumSuffix = "";
+		}
+#endif
 
 		// check ability to hide given channel from gui
 		if (BIT_CHECK(g_hiddenChannels, i)) {
@@ -512,10 +521,10 @@ int http_fn_index(http_request_t* request) {
 			iValue = CHANNEL_Get(i);
 			poststr(request, "<tr><td>");
 			if (iValue >= 0 && iValue <= 2) {
-				hprintf255(request, "Channel %s = %s", CHANNEL_GetLabel(i), types[iValue]);
+				hprintf255(request, "%s%s = %s", channelPrefix, CHANNEL_GetLabel(i), types[iValue]);
 			}
 			else {
-				hprintf255(request, "Channel %s = %i", CHANNEL_GetLabel(i), iValue);
+				hprintf255(request, "%s%s = %i", channelPrefix, CHANNEL_GetLabel(i), iValue);
 			}
 			poststr(request, "</td></tr>");
 		} else if (channelType == ChType_Enum) {
@@ -527,7 +536,7 @@ int http_fn_index(http_request_t* request) {
 			if (g_enums == NULL || g_enums[i]->numOptions == 0 ) {
 				//en = g_enums[i];
 				poststr(request, "<tr><td>");
-				hprintf255(request, "<p>Change channel %s enum:</p><form action=\"index\">", CHANNEL_GetLabel(i));
+				hprintf255(request, "<p>Change %s%s%s:</p><form action=\"index\">", channelPrefix, CHANNEL_GetLabel(i), enumSuffix);
 				hprintf255(request, "<input type=\"hidden\" name=\"setIndex\" value=\"%i\">", i);
 				hprintf255(request, "<input type=\"number\" name=\"set\" value=\"%i\" onblur=\"this.form.submit()\">", iValue);
 				hprintf255(request, "<input type=\"submit\" value=\"Set!\"/></form>");
@@ -537,7 +546,7 @@ int http_fn_index(http_request_t* request) {
 				en = g_enums[i];
 
 				poststr(request, "<tr><td>");
-				hprintf255(request, "<form action=\"index\"><label for=\"select%i\">Channel %s Enum:</label>", i, CHANNEL_GetLabel(i));
+				hprintf255(request, "<form action=\"index\"><label for=\"select%i\">%s%s%s:</label>", i, channelPrefix, CHANNEL_GetLabel(i), enumSuffix);
 				hprintf255(request, "<input type=\"hidden\" name=\"setIndex\" value=\"%i\">", i);
 				hprintf255(request, "<select id=\"select%i\" name=\"set\" onchange=\"this.form.submit()\">", i);
 
@@ -566,7 +575,11 @@ int http_fn_index(http_request_t* request) {
 				oLabel = CMD_FindChannelEnumLabel(g_enums[i], iValue);
 
 			poststr(request, "<tr><td>");
-			hprintf255(request, "Channel %s = %s [%i]", CHANNEL_GetLabel(i), oLabel, iValue);
+			if (channelPrefix[0] == '\0') {
+				hprintf255(request, "%s = %s", CHANNEL_GetLabel(i), oLabel);
+			} else {
+				hprintf255(request, "%s%s = %s [%i]", channelPrefix, CHANNEL_GetLabel(i), oLabel, iValue);
+			}
 			poststr(request, "</td></tr>");
 		}
 		else if ((types = Channel_GetOptionsForChannelType(channelType, &numTypes)) != 0) {
@@ -614,7 +627,7 @@ int http_fn_index(http_request_t* request) {
 			iValue = CHANNEL_Get(i);
 
 			poststr(request, "<tr><td>");
-			hprintf255(request, "Channel %s = %i", CHANNEL_GetLabel(i), iValue);
+			hprintf255(request, "%s%s = %i", channelPrefix, CHANNEL_GetLabel(i), iValue);
 			poststr(request, "</td></tr>");
 		}
 		else if (channelType == ChType_Motion || channelType == ChType_Motion_n) {
@@ -675,7 +688,7 @@ int http_fn_index(http_request_t* request) {
 			}
 			pwmValue = CHANNEL_Get(i);
 			poststr(request, "<tr><td>");
-			hprintf255(request, "Channel %s: <span id=\"sliderValue%i\">%i</span><br><form action=\"index\" id=\"form%i\">", CHANNEL_GetLabel(i), i, pwmValue, i);
+			hprintf255(request, "%s%s: <span id=\"sliderValue%i\">%i</span><br><form action=\"index\" id=\"form%i\">", channelPrefix, CHANNEL_GetLabel(i), i, pwmValue, i);
 			hprintf255(request, "<input type=\"range\" min=\"0\" max=\"%i\" name=\"%s\" id=\"slider%i\" value=\"%i\" data-value-id=\"sliderValue%i\" oninput=\"updateSliderValue(this)\" onchange=\"submitSlider(this)\">", maxValue, inputName, i, pwmValue, i);
 			hprintf255(request, "<input type=\"hidden\" name=\"%sIndex\" value=\"%i\">", inputName, i);
 			hprintf255(request, "<input type=\"submit\" class='disp-none' value=\"Toggle %s\"/></form>", CHANNEL_GetLabel(i));
@@ -842,7 +855,10 @@ int http_fn_index(http_request_t* request) {
 
 			//(KELVIN_TEMPERATURE_MAX - KELVIN_TEMPERATURE_MIN) / (HASS_TEMPERATURE_MAX - HASS_TEMPERATURE_MIN) = 13
 			hprintf255(request, "<input type=\"range\" step='13' min=\"%ld\" max=\"%ld\" ", pwmKelvinMin, pwmKelvinMax);
-			hprintf255(request, "value=\"%ld\" data-value-id=\"sliderValue%i\" oninput=\"updateSliderValue(this)\" onchange=\"submitTemperature(this);\"/>", pwmKelvin, SPECIAL_CHANNEL_TEMPERATURE);
+			// a single value CTRange leaves no travel, so onchange can never fire and only a
+			// click can set it. Normal ranges are left alone, they would submit twice
+			const char *clickHandler = (pwmKelvinMin == pwmKelvinMax) ? " onclick=\"submitTemperature(this);\"" : "";
+			hprintf255(request, "value=\"%ld\" data-value-id=\"sliderValue%i\" oninput=\"updateSliderValue(this)\" onchange=\"submitTemperature(this);\"%s/>", pwmKelvin, SPECIAL_CHANNEL_TEMPERATURE, clickHandler);
 
 			hprintf255(request, "<input type=\"hidden\" name=\"%sIndex\" value=\"%i\"/>", inputName, SPECIAL_CHANNEL_TEMPERATURE);
 			hprintf255(request, "<input id=\"kelvin%i\" type=\"hidden\" name=\"%s\" />", SPECIAL_CHANNEL_TEMPERATURE, inputName);
@@ -1777,6 +1793,9 @@ int http_fn_cfg_wifi(http_request_t* request) {
 			hprintf255(request, "</table><br>");
 		}
 		SC_FREE();
+#elif PLATFORM_RTL8196C
+		extern void HAL_WiFi_Scan_HTML(http_request_t *request);
+		HAL_WiFi_Scan_HTML(request);
 #else
 		hprintf255(request, "TODO %s<br>", PLATFORM_MCU_NAME);
 #endif
@@ -2126,10 +2145,11 @@ HassDeviceInfo *hass_createEnumChannelInfo(int i) {
 		CMD_GenEnumValueTemplate(en, value_tmp, sizeof(value_tmp));
 		CMD_GenEnumCommandTemplate(en, command_tmp, sizeof(command_tmp));
 
-		strcpy(title, CHANNEL_GetLabel(i));
+		snprintf(title, sizeof(title), "%s", CHANNEL_GetLabel(i));
 		sprintf(stateTopic, "~/%i/get", i);
 		sprintf(cmdTopic, "~/%i/set", i);
 		dev_info = hass_createSelectEntityIndexedCustom(
+			i,
 			stateTopic,
 			cmdTopic,
 			en->numOptions,
@@ -2219,6 +2239,12 @@ void doHomeAssistantDiscovery(const char* topic, http_request_t* request) {
 				if (BIT_CHECK(flagsChannelPublished, i)) {
 					continue;
 				}
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+				if (XiaomiCompact4_ShouldSkipGenericHassDiscovery(i)) {
+					BIT_SET(flagsChannelPublished, i);
+					continue;
+				}
+#endif
 				if (type == ChType_Dimmer) {
 					brightness_scale = 100;
 					dimmer = i;
@@ -2242,6 +2268,12 @@ void doHomeAssistantDiscovery(const char* topic, http_request_t* request) {
 				if (BIT_CHECK(flagsChannelPublished, i)) {
 					continue;
 				}
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+				if (XiaomiCompact4_ShouldSkipGenericHassDiscovery(i)) {
+					BIT_SET(flagsChannelPublished, i);
+					continue;
+				}
+#endif
 				if (type == ChType_Toggle) {
 					toggle = i;
 					break;
@@ -2251,12 +2283,33 @@ void doHomeAssistantDiscovery(const char* topic, http_request_t* request) {
 			if (toggle == -1 || dimmer == -1) {
 				break;
 			}
+#if ENABLE_DRIVER_TUYAMCU
+			// On a TuyaMCU LED these raw channels are not the light. Real state
+			// lives in led_dimmer / led_basecolor_rgb, which the ENABLE_LED_BASIC
+			// block below already publishes. Advertising this pair as well gives
+			// HA a second light entity that is permanently stuck at 0. See #2218.
+			//
+			// Mark them published rather than just breaking out: otherwise the
+			// relay loop further down picks the unclaimed toggle up and exposes
+			// it as a switch instead, which is the same dead channel wearing a
+			// different hat.
+			if (TuyaMCU_HasLED()) {
+				BIT_SET(flagsChannelPublished, toggle);
+				BIT_SET(flagsChannelPublished, dimmer);
+				break;
+			}
+#endif
 
 			BIT_SET(flagsChannelPublished, toggle);
 			BIT_SET(flagsChannelPublished, dimmer);
 			dev_info = hass_init_light_singleColor_onChannels(toggle, dimmer, brightness_scale);
 			MQTT_QueuePublish(topic, dev_info->channel, hass_build_discovery_json(dev_info), OBK_PUBLISH_FLAG_RETAIN);
 			hass_free_device_info(dev_info);
+			// hass_free_device_info() takes the pointer by value and cannot clear
+			// this variable. The LED block below guards on "dev_info == NULL", so
+			// leaving it dangling makes that guard fail and the block then reads
+			// and re-frees freed memory. See issue #2230.
+			dev_info = NULL;
 			discoveryQueued = true;
 		}
 	}
@@ -2401,6 +2454,12 @@ void doHomeAssistantDiscovery(const char* topic, http_request_t* request) {
 		if (BIT_CHECK(flagsChannelPublished, i)) {
 			continue;
 		}
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+		if (XiaomiCompact4_ShouldSkipGenericHassDiscovery(i)) {
+			BIT_SET(flagsChannelPublished, i);
+			continue;
+		}
+#endif
 		dev_info = 0;
 		switch (type)
 		{
@@ -2632,15 +2691,20 @@ void doHomeAssistantDiscovery(const char* topic, http_request_t* request) {
 					// backlog setChannelType 3 OpenStopClose; scheduleHADiscovery 1
 					char stateTopic[16];
 					char cmdTopic[16];
-					// TODO: lengths
+					// CHANNEL_GetLabel returns a pointer to a shared static buffer
+					// for unlabelled channels, and hass_init_device_info calls it
+					// again internally - so copy the label before passing it on.
+					char title[64];
+					snprintf(title, sizeof(title), "%s", CHANNEL_GetLabel(i));
 					sprintf(stateTopic, "~/%i/get", i);
 					sprintf(cmdTopic, "~/%i/set", i);
 					dev_info = hass_createSelectEntityIndexed(
+						i,
 						stateTopic,
 						cmdTopic,
 						numOptions,
 						options,
-						CHANNEL_GetLabel(i)
+						title
 					);
 				}
 			}
@@ -3011,8 +3075,6 @@ int http_fn_cm(http_request_t* request) {
 				} else if (request->method == HTTP_POST || request->method == HTTP_PUT) {
 					http_getRawArg(request->bodystart, "cmnd", long_str_alloced, commandLen);
 				}
-				CMD_ExecuteCommand(long_str_alloced, COMMAND_FLAG_SOURCE_HTTP);
-
 				runHTTPCommandInternal(request, long_str_alloced);
 
 				free(long_str_alloced);

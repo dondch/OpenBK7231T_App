@@ -14,6 +14,8 @@
 #include "drv_public.h"
 #include "drv_mdns.h"
 #include "drv_ssdp.h"
+#include "drv_ftp.h"
+#include "drv_smb.h"
 #include "drv_test_drivers.h"
 #include "drv_tuyaMCU.h"
 #include "drv_girierMCU.h"
@@ -24,6 +26,7 @@
 #include "drv_ds1820_common.h"
 #include "drv_ds3231.h"
 #include "drv_hlw8112.h"
+#include "drv_xiaomi_compact4.h"
 #include "drv_DCF77.h"
 
 void DRV_MQTTServer_Init();
@@ -174,6 +177,26 @@ static driver_t g_drivers[] = {
 	DRV_ESPHome_API_Deinit,                  // stopFunction
 	NULL,                                    // onChannelChanged
 	NULL,                                    // onHassDiscovery
+	false,                                   // loaded
+	},
+#endif
+#if ENABLE_DRIVER_XIAOMI_COMPACT4
+	//drvdetail:{"name":"XiaomiCompact4",
+	//drvdetail:"title":"Xiaomi Smart Air Purifier 4 Compact",
+	//drvdetail:"descr":"Device-specific driver for Xiaomi Smart Air Purifier 4 Compact (zhimi.airp.cpa4) on ESP32-WROOM-32D hardware.",
+	//drvdetail:"requires":"ESP32"}
+	{ "XiaomiCompact4",                     // Driver Name
+	XiaomiCompact4_Init,                     // Init
+	XiaomiCompact4_RunEverySecond,           // onEverySecond
+	XiaomiCompact4_AppendInformationToHTTPIndexPage, // appendInformationToHTTPIndexPage
+	XiaomiCompact4_RunQuickTick,             // runQuickTick
+	XiaomiCompact4_Stop,                     // stopFunction
+	XiaomiCompact4_OnChannelChanged,         // onChannelChanged
+#if ENABLE_HA_DISCOVERY
+	XiaomiCompact4_OnHassDiscovery,          // onHassDiscovery
+#else
+	NULL,                                    // onHassDiscovery
+#endif
 	false,                                   // loaded
 	},
 #endif
@@ -933,6 +956,38 @@ static driver_t g_drivers[] = {
 	false,                                   // loaded
 	},
 #endif
+#if ENABLE_DRIVER_FTP && ENABLE_LITTLEFS
+	//drvdetail:{"name":"FTP",
+	//drvdetail:"title":"FTP",
+	//drvdetail:"descr":"RFC 959 FTP Server providing transparent access to LittleFS and mounted VFS volumes (such as USB drives).",
+	//drvdetail:"requires":""}
+	{ "FTP",                                 // Driver Name
+	DRV_FTP_Init,                            // Init
+	DRV_FTP_RunEverySecond,                  // onEverySecond
+	DRV_FTP_AppendInformationToHTTPIndexPage,// appendInformationToHTTPIndexPage
+	DRV_FTP_RunQuickTick,                    // runQuickTick
+	DRV_FTP_Shutdown,                        // stopFunction
+	NULL,                                    // onChannelChanged
+	NULL,                                    // onHassDiscovery
+	false,                                   // loaded
+	},
+#endif
+#if ENABLE_DRIVER_SMB && ENABLE_LITTLEFS
+	//drvdetail:{"name":"SMB",
+	//drvdetail:"title":"SMB",
+	//drvdetail:"descr":"SMB2 network file share server (port 445) providing native Windows/Linux/macOS access to LittleFS and mounted VFS volumes.",
+	//drvdetail:"requires":""}
+	{ "SMB",                                 // Driver Name
+	DRV_SMB_Init,                            // Init
+	DRV_SMB_RunEverySecond,                  // onEverySecond
+	DRV_SMB_AppendInformationToHTTPIndexPage,// appendInformationToHTTPIndexPage
+	DRV_SMB_RunQuickTick,                    // runQuickTick
+	DRV_SMB_Shutdown,                        // stopFunction
+	NULL,                                    // onChannelChanged
+	NULL,                                    // onHassDiscovery
+	false,                                   // loaded
+	},
+#endif
 #if ENABLE_TASMOTADEVICEGROUPS
 	//drvdetail:{"name":"DGR",
 	//drvdetail:"title":"TODO",
@@ -1453,6 +1508,22 @@ static driver_t g_drivers[] = {
 	false,                                   // loaded
 	},
 #endif
+#if ENABLE_DRIVER_RTC
+	//drvdetail:{"name":"BKRTC",
+	//drvdetail:"title":"BK7252N RTC clock",
+	//drvdetail:"descr":"Keeps a wall clock on the always-on RTC counter of the BK7252N. The clock is anchored to NTP, re-anchored only when a fresh NTP response disagrees with it by five seconds or more, and the driver reports how far the software second counter has drifted from the hardware one.",
+	//drvdetail:"requires":""}
+	{ "BKRTC",                               // Driver Name
+	BKRTC_Init,                                // Init
+	BKRTC_OnEverySecond,                       // onEverySecond
+	BKRTC_AppendInformationToHTTPIndexPage,    // appendInformationToHTTPIndexPage
+	NULL,                                    // runQuickTick
+	NULL,                                    // stopFunction
+	NULL,                                    // onChannelChanged
+	NULL,                                    // onHassDiscovery
+	false,                                   // loaded
+	},
+#endif
 	{ "Battery",                             // Driver Name
 	Batt_Init,                               // Init
 	Batt_OnEverySecond,                      // onEverySecond
@@ -1615,6 +1686,22 @@ static driver_t g_drivers[] = {
 	DRV_MQTTServer_AppendInformationToHTTPIndexPage, // appendInformationToHTTPIndexPage
 	DRV_MQTTServer_RunQuickTick,             // runQuickTick
 	DRV_MQTTServer_Stop,                     // stopFunction
+	NULL,                                    // onChannelChanged
+	NULL,                                    // onHassDiscovery
+	false,                                   // loaded
+	},
+#endif
+#if ENABLE_DRIVER_VKL060
+	//drvdetail:{"name":"VKL060",
+	//drvdetail:"title":"TODO",
+	//drvdetail:"descr":"VKL060 segment LCD driver (soft I2C).",
+	//drvdetail:"requires":""}
+	{ "VKL060",                               // Driver Name
+	VKL060_Init,                             // Init
+	VKL060_OnEverySecond,                    // onEverySecond
+	VKL060_AppendInformationToHTTPIndexPage, // appendInformationToHTTPIndexPage
+	NULL,                                    // runQuickTick
+	VKL060_StopDriver,                       // stopFunction
 	NULL,                                    // onChannelChanged
 	NULL,                                    // onHassDiscovery
 	false,                                   // loaded
