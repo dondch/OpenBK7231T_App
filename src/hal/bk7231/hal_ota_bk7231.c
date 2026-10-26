@@ -11,6 +11,25 @@
 #include "../../driver/drv_public.h"
 #include "../../driver/drv_bl_shared.h"
 
+#if PLATFORM_BK7252
+#include "../hal_flashVars.h"
+
+// In the BK-W8 slot build, OTA must not run. The bootloader installs whatever lands in the
+// download partition over the vendor app at 0x10000, which is the A/B fallback, and an
+// ordinary OpenBeken image there leaves the chip with no fallback and no UART download
+// mode. Flash from the vendor app with w8-cam-netflash instead, which checks the camera
+// layout first.
+#define OTA_SLOT_REFUSAL "OTA is disabled in the BK-W8 slot build; flash from the vendor app with w8-cam-netflash"
+static int ota_refused(void) {
+	if (!HAL_ABSlot_RunningFromSlot())
+		return 0;
+	addLogAdv(LOG_ERROR, LOG_FEATURE_OTA, OTA_SLOT_REFUSAL);
+	return 1;
+}
+#else
+static int ota_refused(void) { return 0; }
+#endif
+
 static unsigned char *sector = (void *)0;
 int sectorlen = 0;
 unsigned int addr = 0xff000;
@@ -33,6 +52,8 @@ int HAL_FlashRead(char*buffer, int readlen, int startaddr) {
 }
 
 int init_ota(unsigned int startaddr){
+    if (ota_refused())
+        return 0;
     flash_init();
 	  flash_protection_op(FLASH_XTX_16M_SR_WRITE_ENABLE, FLASH_PROTECT_NONE);
     if (startaddr > 0xff000){
@@ -185,6 +206,8 @@ char *http_buf = (void *)0;
 
 void otarequest(const char *urlin){
   httprequest_t *request = &httprequest;
+  if (ota_refused())
+    return;
   if (request->state == 1){
     addLogAdv(LOG_INFO, LOG_FEATURE_OTA,"********************http in progress, not starting another");
     return;
@@ -231,6 +254,11 @@ int http_rest_post_flash(http_request_t* request, int startaddr, int maxaddr)
     int initial_addr = startaddr;
 
 	ADDLOG_DEBUG(LOG_FEATURE_OTA, "OTA post len %d", request->contentLength);
+
+#if PLATFORM_BK7252
+	if (ota_refused())
+		return http_rest_error(request, -21, OTA_SLOT_REFUSAL);
+#endif
 
 	if (request->contentLength >= 0)
 	{

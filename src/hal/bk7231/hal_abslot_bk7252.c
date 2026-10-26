@@ -40,6 +40,13 @@ int hal_flash_unlock(void);
 
 void HAL_ABSlot_MarkBootOK();
 
+// 1 when this build runs from the BK-W8 slot. A slot build is linked inside the slot,
+// so its own code address answers the question.
+int HAL_ABSlot_RunningFromSlot(void) {
+	uint32_t self = (uint32_t)&HAL_ABSlot_RunningFromSlot;
+	return self >= SLOT_IMG_START && self < SLOT_IMG_END;
+}
+
 static uint32_t crc32_update(uint32_t crc, const byte *p, int len) {
 	crc = ~crc;
 	while (len--) {
@@ -84,12 +91,11 @@ static void set_status(const char *status) {
 }
 
 void HAL_ABSlot_MarkBootOK() {
-	uint32_t self = (uint32_t)&HAL_ABSlot_MarkBootOK;
 	uint32_t magic, end, crc;
 	byte *env = 0, *check = 0;
 	int dataEnd, value, valueLen;
 
-	if (self < SLOT_IMG_START || self >= SLOT_IMG_END) {
+	if (!HAL_ABSlot_RunningFromSlot()) {
 		set_status("not running from the BK-W8 slot, ab_boot not changed");
 		return;
 	}
