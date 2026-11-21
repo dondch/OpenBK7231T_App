@@ -1362,7 +1362,10 @@ static int http_rest_post_channelTypes(http_request_t* request) {
 }
 
 int http_rest_error(http_request_t* request, int code, char* msg) {
-	request->responseCode = code;
+	// Some callers pass an internal error number, for example -20. That is not an HTTP
+	// status, and clients reject a status line such as "HTTP/1.1 -20 OK". Send 400 on
+	// the status line then. The JSON body keeps the original number.
+	request->responseCode = (code >= 100 && code <= 599) ? code : 400;
 	http_setup(request, httpMimeTypeJson);
 	if (code != 200) {
 		hprintf255(request, "{\"error\":%d, \"msg\":\"%s\"}", code, msg);
